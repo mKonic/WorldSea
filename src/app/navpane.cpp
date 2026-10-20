@@ -130,6 +130,7 @@ NavPane::NavPane(World *world, QWidget *parent) : QWidget(parent), m_world(world
         case EntityNode: emit openEntity(i->data(0, IdRole).toLongLong()); break;
         case GraphNode: emit openGraph(); break;
         case ChecksNode: emit openChecks(); break;
+        case HierarchyNode: emit openHierarchy(); break;
         }
     });
     connect(m_tree, &QTreeWidget::itemChanged, this, [this](QTreeWidgetItem *i) { renamed(i); });
@@ -228,6 +229,7 @@ void NavPane::rebuild()
     if (filter.isEmpty()) {
         auto *views = header("VIEWS", ViewsHeader);
         for (auto [text, kind, tip] : {std::tuple{"Graph", GraphNode, "Every item and link as of this chapter (Ctrl+G)"},
+                                       std::tuple{"Hierarchy", HierarchyNode, "Items nested by a link field (Ctrl+Shift+H)"},
                                        std::tuple{"Continuity checks", ChecksNode, "What contradicts itself (Ctrl+Shift+C)"}}) {
             auto *v = new QTreeWidgetItem(views, {text});
             v->setData(0, KindRole, kind);
@@ -364,6 +366,7 @@ void NavPane::activated(QTreeWidgetItem *item)
     case TypeNode: emit openType(id); break;
     case GraphNode: emit openGraph(); break;
     case ChecksNode: emit openChecks(); break;
+    case HierarchyNode: emit openHierarchy(); break;
     default: item->setExpanded(!item->isExpanded());
     }
 }
@@ -412,6 +415,7 @@ void NavPane::contextMenu(const QPoint &p)
     case ViewsHeader:
     case GraphNode:
     case ChecksNode:
+    case HierarchyNode:
         return;
     case BooksHeader:
         menu.addAction("New book", this, &NavPane::newBook);

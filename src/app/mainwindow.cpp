@@ -2,6 +2,7 @@
 
 #include "app/checksview.h"
 #include "app/graphview.h"
+#include "app/hierarchyview.h"
 #include "app/navpane.h"
 #include "app/quickopen.h"
 #include "app/sheetview.h"
@@ -102,6 +103,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_world(new World
     connect(m_nav, &NavPane::openTable, this, &MainWindow::openTable);
     connect(m_nav, &NavPane::openGraph, this, &MainWindow::openGraph);
     connect(m_nav, &NavPane::openChecks, this, &MainWindow::openChecks);
+    connect(m_nav, &NavPane::openHierarchy, this, &MainWindow::openHierarchy);
     connect(m_world, &World::changed, this, &MainWindow::updateTitle);
 
     buildMenus();
@@ -258,6 +260,7 @@ void MainWindow::buildMenus()
         if (!type && !m_world->types().isEmpty()) type = m_world->types().first().id;
         if (type) openTable(type);
     });
+    m_worldActions << go->addAction("&Hierarchy", QKeySequence("Ctrl+Shift+H"), this, &MainWindow::openHierarchy);
     m_worldActions << go->addAction("&Continuity checks", QKeySequence("Ctrl+Shift+C"), this, &MainWindow::openChecks);
     m_worldActions << go->addAction("&Filter items", QKeySequence::Find, this, [this] { m_nav->focusFilter(); });
     go->addSeparator();
@@ -436,6 +439,19 @@ void MainWindow::openChecks()
     });
     c->rebuild();
     m_tabs->setCurrentIndex(index);
+}
+
+void MainWindow::openHierarchy()
+{
+    for (int i = 0; i < m_tabs->count(); ++i) {
+        if (qobject_cast<HierarchyView *>(m_tabs->widget(i))) {
+            m_tabs->setCurrentIndex(i);
+            return;
+        }
+    }
+    auto *h = new HierarchyView(m_world);
+    connect(h, &HierarchyView::openEntity, this, [this](Id id) { openEntity(id); });
+    m_tabs->setCurrentIndex(m_tabs->addTab(h, "Hierarchy"));
 }
 
 void MainWindow::openGraph()
