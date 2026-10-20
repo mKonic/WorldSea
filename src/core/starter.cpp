@@ -50,6 +50,7 @@ void addTypes(World &w)
     const Id event = w.addType("Event", "#c97a6a");
     const Id item = w.addType("Item", "#a98ac9");
     const Id thread = w.addType("Plot thread", "#c9c26a");
+    const Id secret = w.addType("Secret", "#8a8a8a");
 
     plain(w, character, "Status", Kind::Text);
     plain(w, character, "Age", Kind::Number);
@@ -85,6 +86,11 @@ void addTypes(World &w)
     plain(w, thread, "Paid off in", Kind::Chapter);
     ref(w, thread, "Involves", character, true, "Threads");
     plain(w, thread, "Details", Kind::LongText);
+
+    // a link to a character made in a chapter is when they learn it
+    plain(w, secret, "Truth", Kind::LongText);
+    ref(w, secret, "Known by", character, true, "Knows");
+    plain(w, secret, "Revealed to reader in", Kind::Chapter);
 }
 
 } // namespace worldsea::starter

@@ -34,10 +34,11 @@ signals:
     void openChecks();
     void openHierarchy();
     void openLanes();
+    void openMatrix();
 
 private:
     enum Role { KindRole = Qt::UserRole, IdRole };
-    enum NodeKind { BooksHeader, ItemsHeader, BookNode, ChapterNode, TypeNode, EntityNode, ViewsHeader, GraphNode, ChecksNode, HierarchyNode, LanesNode };
+    enum NodeKind { BooksHeader, ItemsHeader, BookNode, ChapterNode, TypeNode, EntityNode, ViewsHeader, GraphNode, ChecksNode, HierarchyNode, LanesNode, MatrixNode };
 
     void rebuild();
     // where a dragged book, chapter or type may land, and landing it

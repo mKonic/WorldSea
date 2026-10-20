@@ -37,6 +37,7 @@ private:
     void openChecks();
     void openHierarchy();
     void openLanes();
+    void openMatrix();
     void quickOpen();
     void newItemHere();
     void updateTitle();

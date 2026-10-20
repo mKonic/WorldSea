@@ -4,6 +4,7 @@
 #include "app/graphview.h"
 #include "app/hierarchyview.h"
 #include "app/lanesview.h"
+#include "app/matrixview.h"
 #include "app/navpane.h"
 #include "app/quickopen.h"
 #include "app/sheetview.h"
@@ -106,6 +107,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_world(new World
     connect(m_nav, &NavPane::openChecks, this, &MainWindow::openChecks);
     connect(m_nav, &NavPane::openHierarchy, this, &MainWindow::openHierarchy);
     connect(m_nav, &NavPane::openLanes, this, &MainWindow::openLanes);
+    connect(m_nav, &NavPane::openMatrix, this, &MainWindow::openMatrix);
     connect(m_world, &World::changed, this, &MainWindow::updateTitle);
 
     buildMenus();
@@ -263,6 +265,7 @@ void MainWindow::buildMenus()
         if (type) openTable(type);
     });
     m_worldActions << go->addAction("Time&line", QKeySequence("Ctrl+L"), this, &MainWindow::openLanes);
+    m_worldActions << go->addAction("&Who knows what", QKeySequence("Ctrl+Shift+M"), this, &MainWindow::openMatrix);
     m_worldActions << go->addAction("&Hierarchy", QKeySequence("Ctrl+Shift+H"), this, &MainWindow::openHierarchy);
     m_worldActions << go->addAction("&Continuity checks", QKeySequence("Ctrl+Shift+C"), this, &MainWindow::openChecks);
     m_worldActions << go->addAction("&Filter items", QKeySequence::Find, this, [this] { m_nav->focusFilter(); });
@@ -468,6 +471,19 @@ void MainWindow::openLanes()
     auto *l = new LanesView(m_world);
     connect(l, &LanesView::openEntity, this, [this](Id id) { openEntity(id); });
     m_tabs->setCurrentIndex(m_tabs->addTab(l, "Timeline"));
+}
+
+void MainWindow::openMatrix()
+{
+    for (int i = 0; i < m_tabs->count(); ++i) {
+        if (qobject_cast<MatrixView *>(m_tabs->widget(i))) {
+            m_tabs->setCurrentIndex(i);
+            return;
+        }
+    }
+    auto *m = new MatrixView(m_world);
+    connect(m, &MatrixView::openEntity, this, [this](Id id) { openEntity(id); });
+    m_tabs->setCurrentIndex(m_tabs->addTab(m, "Who knows what"));
 }
 
 void MainWindow::openGraph()
