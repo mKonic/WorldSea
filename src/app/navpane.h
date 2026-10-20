@@ -30,10 +30,12 @@ signals:
     void openEntity(Id id, bool focusName = false);
     void openType(Id id);
     void openTable(Id id);
+    void openGraph();
+    void openChecks();
 
 private:
     enum Role { KindRole = Qt::UserRole, IdRole };
-    enum NodeKind { BooksHeader, ItemsHeader, BookNode, ChapterNode, TypeNode, EntityNode };
+    enum NodeKind { BooksHeader, ItemsHeader, BookNode, ChapterNode, TypeNode, EntityNode, ViewsHeader, GraphNode, ChecksNode };
 
     void rebuild();
     // where a dragged book, chapter or type may land, and landing it

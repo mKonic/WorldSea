@@ -167,7 +167,7 @@ QTableWidget::item:selected { background: #333333; color: %1; }
 QTableCornerButton::section { background: %7; border: none; }
 QTabWidget::pane { border: none; }
 QTabWidget::tab-bar { left: 0; }
-QTabBar { background: %7; }
+QTabBar { background: %7; qproperty-drawBase: 0; }
 QTabBar::tab { background: %7; color: %6; padding: 9px 10px 9px 16px; border: none; border-bottom: 2px solid transparent; margin-right: 1px; }
 QTabBar::tab:selected { color: %1; border-bottom-color: %5; }
 QTabBar::tab:hover { color: %1; }

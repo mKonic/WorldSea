@@ -1,6 +1,7 @@
 #include "app/navpane.h"
 
 #include "app/theme.h"
+#include "core/continuity.h"
 
 #include <QDropEvent>
 #include <QHeaderView>
@@ -125,7 +126,11 @@ NavPane::NavPane(World *world, QWidget *parent) : QWidget(parent), m_world(world
     connect(m_tree, &QTreeWidget::itemActivated, this, [this](QTreeWidgetItem *i) { activated(i); });
     connect(m_tree, &QTreeWidget::itemDoubleClicked, this, [this](QTreeWidgetItem *i) { activated(i); });
     connect(m_tree, &QTreeWidget::itemClicked, this, [this](QTreeWidgetItem *i) {
-        if (i->data(0, KindRole).toInt() == EntityNode) emit openEntity(i->data(0, IdRole).toLongLong());
+        switch (i->data(0, KindRole).toInt()) {
+        case EntityNode: emit openEntity(i->data(0, IdRole).toLongLong()); break;
+        case GraphNode: emit openGraph(); break;
+        case ChecksNode: emit openChecks(); break;
+        }
     });
     connect(m_tree, &QTreeWidget::itemChanged, this, [this](QTreeWidgetItem *i) { renamed(i); });
     connect(m_tree, &QTreeWidget::itemCollapsed, this, [this](QTreeWidgetItem *i) {
@@ -221,6 +226,23 @@ void NavPane::rebuild()
     };
 
     if (filter.isEmpty()) {
+        auto *views = header("VIEWS", ViewsHeader);
+        for (auto [text, kind, tip] : {std::tuple{"Graph", GraphNode, "Every item and link as of this chapter (Ctrl+G)"},
+                                       std::tuple{"Continuity checks", ChecksNode, "What contradicts itself (Ctrl+Shift+C)"}}) {
+            auto *v = new QTreeWidgetItem(views, {text});
+            v->setData(0, KindRole, kind);
+            v->setData(0, IdRole, 0);
+            v->setToolTip(0, tip);
+            v->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+            if (kind == ChecksNode) {
+                int warnings = 0;
+                for (const auto &i : checkContinuity(*m_world)) warnings += i.severity == Issue::Warning;
+                if (warnings) {
+                    v->setText(0, QStringLiteral("Continuity checks  %1").arg(warnings));
+                    v->setIcon(0, dot(QColor("#d9822b")));
+                }
+            }
+        }
         auto *booksHeader = header("BOOKS", BooksHeader);
         for (const auto &b : m_world->books()) {
             auto *bi = new QTreeWidgetItem(booksHeader, {b.name});
@@ -340,6 +362,8 @@ void NavPane::activated(QTreeWidgetItem *item)
     case ChapterNode: m_world->setCursor(id); break;
     case EntityNode: emit openEntity(id); break;
     case TypeNode: emit openType(id); break;
+    case GraphNode: emit openGraph(); break;
+    case ChecksNode: emit openChecks(); break;
     default: item->setExpanded(!item->isExpanded());
     }
 }
@@ -385,6 +409,10 @@ void NavPane::contextMenu(const QPoint &p)
         menu.addAction("Move down", this, [=] { move(pos + 1); })->setEnabled(pos + 1 < count);
     };
     switch (kind) {
+    case ViewsHeader:
+    case GraphNode:
+    case ChecksNode:
+        return;
     case BooksHeader:
         menu.addAction("New book", this, &NavPane::newBook);
         break;

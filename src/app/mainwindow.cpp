@@ -100,6 +100,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_world(new World
     connect(m_nav, &NavPane::openEntity, this, &MainWindow::openEntity);
     connect(m_nav, &NavPane::openType, this, &MainWindow::openType);
     connect(m_nav, &NavPane::openTable, this, &MainWindow::openTable);
+    connect(m_nav, &NavPane::openGraph, this, &MainWindow::openGraph);
+    connect(m_nav, &NavPane::openChecks, this, &MainWindow::openChecks);
     connect(m_world, &World::changed, this, &MainWindow::updateTitle);
 
     buildMenus();
