@@ -300,6 +300,9 @@ private:
     void beginStep(const QString &label);
     void endStep(bool ok);
     void replay(qint64 from, qint64 to);
+    // the undo and redo lines, kept in the file beside the log they point into
+    void saveStacks();
+    void loadStacks();
     void invalidateTimeline();
     void saveState(const char *key, const QString &value);
     QString loadState(const char *key) const;

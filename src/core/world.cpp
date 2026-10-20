@@ -187,7 +187,9 @@ void World::open(const QString &path)
             // the starter content is where the world begins, not an edit
             m_db.exec("DELETE FROM undolog");
             m_undo.clear();
+            saveStacks();
         }
+        loadStacks();
     } catch (...) {
         m_db.close();
         m_path.clear();
@@ -251,7 +253,9 @@ QString World::loadState(const char *key) const
 
 void World::installUndoTriggers()
 {
-    m_db.exec("CREATE TEMP TABLE IF NOT EXISTS undolog(seq INTEGER PRIMARY KEY AUTOINCREMENT, sql TEXT NOT NULL)");
+    // kept in the file, so undo reaches back past a reopen; the triggers that
+    // fill it are per connection
+    m_db.exec("CREATE TABLE IF NOT EXISTS undolog(seq INTEGER PRIMARY KEY AUTOINCREMENT, sql TEXT NOT NULL)");
     for (const char *table : kTracked) {
         QStringList cols;
         {
@@ -298,6 +302,8 @@ void World::endStep(bool ok)
     if (!ok) {
         try {
             m_db.exec("ROLLBACK");
+            // an undo or redo that failed already moved its entry
+            loadStacks();
         } catch (...) {
         }
         invalidateTimeline();
@@ -313,12 +319,39 @@ void World::endStep(bool ok)
         m_redo.clear();
         m_undo.append({m_stepStart + 1, end, m_stepLabel});
     }
+    if (end > m_stepStart) saveStacks();
     m_db.exec("COMMIT");
     invalidateTimeline();
     if (end > m_stepStart) {
         emit changed();
         emit undoStateChanged();
     }
+}
+
+void World::saveStacks()
+{
+    auto encode = [](const QList<UndoEntry> &list) {
+        QJsonArray a;
+        for (const auto &e : list) a.append(QJsonArray{e.from, e.to, e.label});
+        return a;
+    };
+    const QJsonObject o{{"undo", encode(m_undo)}, {"redo", encode(m_redo)}};
+    saveState("undo", QString::fromUtf8(QJsonDocument(o).toJson(QJsonDocument::Compact)));
+}
+
+void World::loadStacks()
+{
+    const QJsonObject o = QJsonDocument::fromJson(loadState("undo").toUtf8()).object();
+    auto decode = [](const QJsonArray &a) {
+        QList<UndoEntry> out;
+        for (const auto &v : a) {
+            const QJsonArray e = v.toArray();
+            out.append({e[0].toInteger(), e[1].toInteger(), e[2].toString()});
+        }
+        return out;
+    };
+    m_undo = decode(o["undo"].toArray());
+    m_redo = decode(o["redo"].toArray());
 }
 
 void World::replay(qint64 from, qint64 to)

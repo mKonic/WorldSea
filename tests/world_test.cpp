@@ -215,6 +215,24 @@ TEST_F(WorldTest, FindAndSearchUseAliases)
     EXPECT_LT(fuzzyScore("xyz", "Lin Feng"), 0);
 }
 
+TEST_F(WorldTest, UndoSurvivesReopening)
+{
+    const Id lin = w.addEntity(character, "Lin Feng");
+    w.renameEntity(lin, "Lin Fan");
+    const QString path = w.path();
+    w.close();
+    World again;
+    again.open(path);
+    ASSERT_TRUE(again.canUndo());
+    EXPECT_EQ(again.undoLabel(), "Rename item");
+    again.undo();
+    EXPECT_EQ(again.entity(lin)->name, "Lin Feng");
+    again.undo();
+    EXPECT_FALSE(again.entity(lin));
+    again.redo();
+    EXPECT_EQ(again.entity(lin)->name, "Lin Feng");
+}
+
 TEST_F(WorldTest, ReopenKeepsCursorAndMode)
 {
     w.setCursor(ch2);
