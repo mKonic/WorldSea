@@ -32,6 +32,7 @@ private:
     void closeWorld();
     void openEntity(Id id, bool focusName = false);
     void openType(Id id);
+    void openTable(Id id);
     void openGraph();
     void quickOpen();
     void newItemHere();

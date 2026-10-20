@@ -4,6 +4,7 @@
 #include "app/navpane.h"
 #include "app/quickopen.h"
 #include "app/sheetview.h"
+#include "app/tableview.h"
 #include "app/timelinebar.h"
 #include "app/typeeditor.h"
 
@@ -97,6 +98,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_world(new World
     });
     connect(m_nav, &NavPane::openEntity, this, &MainWindow::openEntity);
     connect(m_nav, &NavPane::openType, this, &MainWindow::openType);
+    connect(m_nav, &NavPane::openTable, this, &MainWindow::openTable);
     connect(m_world, &World::changed, this, &MainWindow::updateTitle);
 
     buildMenus();
@@ -243,6 +245,16 @@ void MainWindow::buildMenus()
     addAction(quickAlt);
     m_worldActions << quickAlt;
     m_worldActions << go->addAction("&Graph", QKeySequence("Ctrl+G"), this, &MainWindow::openGraph);
+    m_worldActions << go->addAction("&Table of this type", QKeySequence("Ctrl+T"), this, [this] {
+        Id type = 0;
+        if (auto *s = qobject_cast<SheetView *>(m_tabs->currentWidget())) {
+            if (const auto e = m_world->entity(s->entityId())) type = e->type;
+        } else if (auto *t = qobject_cast<TypeEditor *>(m_tabs->currentWidget())) {
+            type = t->typeId();
+        }
+        if (!type && !m_world->types().isEmpty()) type = m_world->types().first().id;
+        if (type) openTable(type);
+    });
     m_worldActions << go->addAction("&Filter items", QKeySequence::Find, this, [this] { m_nav->focusFilter(); });
     go->addSeparator();
     m_worldActions << go->addAction("Close &tab", QKeySequence("Ctrl+W"), this, [this] {
@@ -380,6 +392,28 @@ void MainWindow::openType(Id id)
         ed->deleteLater();
     });
     m_tabs->setCurrentIndex(index);
+}
+
+void MainWindow::openTable(Id id)
+{
+    for (int i = 0; i < m_tabs->count(); ++i) {
+        if (auto *t = qobject_cast<TableView *>(m_tabs->widget(i)); t && t->typeId() == id) {
+            m_tabs->setCurrentIndex(i);
+            return;
+        }
+    }
+    const auto t = m_world->type(id);
+    if (!t) return;
+    auto *table = new TableView(m_world, id);
+    connect(table, &TableView::openEntity, this, [this](Id e) { openEntity(e); });
+    connect(table, &TableView::titleChanged, this, [this, table](const QString &title) {
+        if (const int i = m_tabs->indexOf(table); i >= 0) m_tabs->setTabText(i, title + " table");
+    });
+    connect(table, &TableView::gone, this, [this, table] {
+        if (const int i = m_tabs->indexOf(table); i >= 0) m_tabs->removeTab(i);
+        table->deleteLater();
+    });
+    m_tabs->setCurrentIndex(m_tabs->addTab(table, t->name + " table"));
 }
 
 void MainWindow::openGraph()

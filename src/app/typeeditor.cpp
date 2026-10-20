@@ -146,7 +146,7 @@ TypeEditor::TypeEditor(World *world, Id type, QWidget *parent) : QWidget(parent)
     auto *ladder = new QWidget;
     auto *ladderCol = new QVBoxLayout(ladder);
     ladderCol->setContentsMargins(0, 0, 0, 0);
-    auto *stepsTitle = new QLabel("Steps, lowest first. Double-click to rename.");
+    auto *stepsTitle = new QLabel("Steps, lowest first. Drag to reorder, double-click to rename.");
     stepsTitle->setObjectName("muted");
     m_steps = new QListWidget;
     m_steps->setMinimumHeight(160);
@@ -204,6 +204,25 @@ TypeEditor::TypeEditor(World *world, Id type, QWidget *parent) : QWidget(parent)
         if (c.isValid()) m_world->setTypeColor(m_type, c.name());
     });
     connect(m_fields, &QListWidget::currentRowChanged, this, &TypeEditor::refreshField);
+    // drag to reorder: Qt moves the row, the world then moves the field
+    m_fields->setDragDropMode(QAbstractItemView::InternalMove);
+    m_steps->setDragDropMode(QAbstractItemView::InternalMove);
+    auto landedAt = [](int start, int row) { return row > start ? row - 1 : row; };
+    connect(m_fields->model(), &QAbstractItemModel::rowsMoved, this, [this, landedAt](const QModelIndex &, int start, int, const QModelIndex &, int row) {
+        const int to = landedAt(start, row);
+        auto *item = m_fields->item(to);
+        if (!item) return;
+        QMetaObject::invokeMethod(this, [this, id = item->data(Qt::UserRole).toLongLong(), to] { m_world->moveField(id, to); },
+                                  Qt::QueuedConnection);
+    });
+    connect(m_steps->model(), &QAbstractItemModel::rowsMoved, this, [this, landedAt](const QModelIndex &, int start, int, const QModelIndex &, int row) {
+        const int to = landedAt(start, row);
+        QMetaObject::invokeMethod(this, [this, start, to] {
+            saveField([start, to](FieldDef &f) {
+                if (start >= 0 && start < f.steps.size() && to >= 0 && to < f.steps.size()) f.steps.move(start, to);
+            });
+        }, Qt::QueuedConnection);
+    });
     auto moveBy = [this](int d) {
         const Id f = currentField();
         const int row = m_fields->currentRow();

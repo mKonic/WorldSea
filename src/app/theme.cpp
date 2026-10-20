@@ -66,6 +66,13 @@ QString Theme::writeIcons() const
         };
     };
     draw("chevron", 12, 12, chevron(muted));
+    draw("chevron-up", 12, 12, [&](QPainter &p) {
+        p.setPen(QPen(muted, 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        QPainterPath path(QPointF(2.5, 7.5));
+        path.lineTo(6, 4);
+        path.lineTo(9.5, 7.5);
+        p.drawPath(path);
+    });
     draw("chevron-right", 12, 12, [&](QPainter &p) {
         p.setPen(QPen(muted, 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
         QPainterPath path(QPointF(4.5, 2.5));
@@ -150,7 +157,14 @@ QTreeView::branch { background: transparent; border: none; }
 QTreeView::branch:selected { background: #333333; }
 QTreeView::branch:has-children:closed { image: url(ICONS/chevron-right.png); }
 QTreeView::branch:has-children:open { image: url(ICONS/chevron.png); }
-QHeaderView::section { background: %7; color: %6; border: none; }
+QHeaderView::section { background: %7; color: %6; border: none; border-bottom: 1px solid %4; padding: 7px 10px; }
+QHeaderView::section:hover { color: %1; }
+QHeaderView::up-arrow { image: url(ICONS/chevron-up.png); width: 10px; height: 10px; }
+QHeaderView::down-arrow { image: url(ICONS/chevron.png); width: 10px; height: 10px; }
+QTableWidget { background: %2; border: none; outline: none; gridline-color: %4; selection-background-color: #333333; selection-color: %1; }
+QTableWidget::item { padding: 4px 10px; border-bottom: 1px solid #242424; }
+QTableWidget::item:selected { background: #333333; color: %1; }
+QTableCornerButton::section { background: %7; border: none; }
 QTabWidget::pane { border: none; }
 QTabWidget::tab-bar { left: 0; }
 QTabBar { background: %7; }

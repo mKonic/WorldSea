@@ -2,6 +2,7 @@
 
 #include "app/theme.h"
 
+#include <QDropEvent>
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QMenu>
@@ -33,6 +34,35 @@ QIcon dot(const QColor &c, bool hollow = false)
     p.drawEllipse(QRectF(2.5, 2.5, 7, 7));
     return QIcon(pm);
 }
+
+// QAbstractItemView::DropIndicatorPosition, which is protected
+constexpr int kOn = 0, kAbove = 1, kBelow = 2;
+
+// a tree whose drags are decided by the pane, and land through the world
+// rather than by Qt moving rows around
+class NavTree : public QTreeWidget {
+public:
+    std::function<bool(QTreeWidgetItem *dragged, QTreeWidgetItem *target, int indicator)> allow;
+    std::function<void(QTreeWidgetItem *dragged, QTreeWidgetItem *target, int indicator)> land;
+
+protected:
+    void dragMoveEvent(QDragMoveEvent *e) override
+    {
+        QTreeWidget::dragMoveEvent(e);
+        QTreeWidgetItem *target = itemAt(e->position().toPoint());
+        if (!currentItem() || !target || !allow(currentItem(), target, dropIndicatorPosition())) e->ignore();
+    }
+    void dropEvent(QDropEvent *e) override
+    {
+        QTreeWidgetItem *target = itemAt(e->position().toPoint());
+        QTreeWidgetItem *dragged = currentItem();
+        const int indicator = dropIndicatorPosition();
+        // Qt must not move the row itself: the world does, then the tree is rebuilt
+        e->setDropAction(Qt::IgnoreAction);
+        e->accept();
+        if (dragged && target && allow(dragged, target, indicator)) land(dragged, target, indicator);
+    }
+};
 
 } // namespace
 
@@ -68,7 +98,20 @@ NavPane::NavPane(World *world, QWidget *parent) : QWidget(parent), m_world(world
     top->addWidget(add);
     col->addLayout(top);
 
-    m_tree = new QTreeWidget;
+    auto *tree = new NavTree;
+    m_tree = tree;
+    tree->setDragDropMode(QAbstractItemView::InternalMove);
+    tree->setDropIndicatorShown(true);
+    tree->allow = [this](QTreeWidgetItem *d, QTreeWidgetItem *t, int indicator) {
+        return canDrop(d->data(0, KindRole).toInt(), t, indicator);
+    };
+    tree->land = [this](QTreeWidgetItem *d, QTreeWidgetItem *t, int indicator) {
+        // the rebuild that follows deletes these items: pass ids, and wait for the drop to finish
+        QMetaObject::invokeMethod(this, [this, dk = d->data(0, KindRole).toInt(), did = d->data(0, IdRole).toLongLong(),
+                                         tk = t->data(0, KindRole).toInt(), tid = t->data(0, IdRole).toLongLong(), indicator] {
+            dropped(dk, did, tk, tid, indicator);
+        }, Qt::QueuedConnection);
+    };
     m_tree->setHeaderHidden(true);
     m_tree->setIndentation(14);
     m_tree->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -101,6 +144,49 @@ QString NavPane::key(QTreeWidgetItem *item)
     return QStringLiteral("%1:%2").arg(item->data(0, KindRole).toInt()).arg(item->data(0, IdRole).toLongLong());
 }
 
+bool NavPane::canDrop(int dragKind, QTreeWidgetItem *target, int indicator) const
+{
+    const int tk = target->data(0, KindRole).toInt();
+    const bool between = indicator == kAbove || indicator == kBelow;
+    switch (dragKind) {
+    case ChapterNode: return tk == ChapterNode || (tk == BookNode && indicator == kOn);
+    case BookNode: return tk == BookNode && between;
+    case TypeNode: return tk == TypeNode && between;
+    default: return false;
+    }
+}
+
+void NavPane::dropped(int dragKind, Id dragId, int targetKind, Id targetId, int indicator)
+{
+    const bool below = indicator != kAbove;
+    // the index the dragged one takes in a list it may already be in
+    auto landing = [&](const QList<Id> &order) {
+        int i = int(order.indexOf(targetId)) + (below ? 1 : 0);
+        const int from = int(order.indexOf(dragId));
+        if (from >= 0 && from < i) --i;
+        return i;
+    };
+    if (dragKind == ChapterNode) {
+        if (targetKind == BookNode) {
+            m_world->moveChapter(dragId, targetId, -1);
+            return;
+        }
+        const auto t = m_world->chapter(targetId);
+        if (!t || targetId == dragId) return;
+        QList<Id> order;
+        for (const auto &c : m_world->chapters(t->book)) order << c.id;
+        m_world->moveChapter(dragId, t->book, landing(order));
+    } else if (dragKind == BookNode) {
+        QList<Id> order;
+        for (const auto &b : m_world->books()) order << b.id;
+        if (targetId != dragId) m_world->moveBook(dragId, landing(order));
+    } else if (dragKind == TypeNode) {
+        QList<Id> order;
+        for (const auto &t : m_world->types()) order << t.id;
+        if (targetId != dragId) m_world->moveType(dragId, landing(order));
+    }
+}
+
 void NavPane::focusFilter()
 {
     m_filter->setFocus();
@@ -130,7 +216,7 @@ void NavPane::rebuild()
         f.setLetterSpacing(QFont::AbsoluteSpacing, 1);
         h->setFont(0, f);
         h->setForeground(0, th.muted);
-        h->setFlags(Qt::ItemIsEnabled);
+        h->setFlags(Qt::ItemIsEnabled | Qt::ItemIsDropEnabled);
         return h;
     };
 
@@ -140,12 +226,12 @@ void NavPane::rebuild()
             auto *bi = new QTreeWidgetItem(booksHeader, {b.name});
             bi->setData(0, KindRole, BookNode);
             bi->setData(0, IdRole, b.id);
-            bi->setFlags(bi->flags() | Qt::ItemIsEditable);
+            bi->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled);
             for (const auto &c : m_world->chapters(b.id)) {
                 auto *ci = new QTreeWidgetItem(bi, {c.title});
                 ci->setData(0, KindRole, ChapterNode);
                 ci->setData(0, IdRole, c.id);
-                ci->setFlags(ci->flags() | Qt::ItemIsEditable);
+                ci->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled);
                 if (c.id == m_world->cursor()) {
                     ci->setForeground(0, th.accent);
                     ci->setIcon(0, dot(th.accent));
@@ -166,7 +252,7 @@ void NavPane::rebuild()
         ti->setData(0, KindRole, TypeNode);
         ti->setData(0, IdRole, t.id);
         ti->setIcon(0, dot(typeColor(t.color)));
-        ti->setFlags(ti->flags() | Qt::ItemIsEditable);
+        ti->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled);
         int shown = 0;
         for (const auto &e : entities) {
             if (!filter.isEmpty()) {
@@ -178,7 +264,7 @@ void NavPane::rebuild()
             auto *ei = new QTreeWidgetItem(ti, {e.name});
             ei->setData(0, KindRole, EntityNode);
             ei->setData(0, IdRole, e.id);
-            ei->setFlags(ei->flags() | Qt::ItemIsEditable);
+            ei->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
             QStringList tip;
             if (!e.aliases.isEmpty()) tip << "Also: " + e.aliases.join(", ");
             if (!m_world->existsAt(e, cursor)) {
@@ -358,6 +444,7 @@ void NavPane::contextMenu(const QPoint &p)
         for (int i = 0; i < types.size(); ++i)
             if (types[i].id == id) pos = i;
         menu.addAction("New " + t->name, this, [=, this] { newEntity(id); });
+        menu.addAction("Open as table", this, [=, this] { emit openTable(id); });
         menu.addAction("Edit sheet", this, [=, this] { emit openType(id); });
         menu.addAction("Rename", this, [=, this] { startRename(TypeNode, id); });
         moveActions([=, this](int to) { m_world->moveType(id, to); }, pos, int(types.size()));

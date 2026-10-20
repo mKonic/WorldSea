@@ -29,12 +29,16 @@ public:
 signals:
     void openEntity(Id id, bool focusName = false);
     void openType(Id id);
+    void openTable(Id id);
 
 private:
     enum Role { KindRole = Qt::UserRole, IdRole };
     enum NodeKind { BooksHeader, ItemsHeader, BookNode, ChapterNode, TypeNode, EntityNode };
 
     void rebuild();
+    // where a dragged book, chapter or type may land, and landing it
+    bool canDrop(int dragKind, QTreeWidgetItem *target, int indicator) const;
+    void dropped(int dragKind, Id dragId, int targetKind, Id targetId, int indicator);
     void contextMenu(const QPoint &p);
     void activated(QTreeWidgetItem *item);
     void renamed(QTreeWidgetItem *item);
