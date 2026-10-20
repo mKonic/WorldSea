@@ -306,7 +306,7 @@ GraphView::GraphView(World *world, QWidget *parent) : QWidget(parent), m_world(w
 void GraphView::rescaleText()
 {
     const double zoom = m_view->transform().m11();
-    const double s = std::clamp(zoom < 1 ? 1 / zoom : 1.0, 1.0, 4.0);
+    const double s = std::clamp(zoom < 1 ? 1 / zoom : 1.0, 1.0, 8.0);
     if (std::abs(s - g_textScale) < 0.01) return;
     g_textScale = s;
     for (auto *n : m_nodes) n->rescaled();
@@ -398,8 +398,10 @@ void GraphView::rebuild()
     m_layout.seed(order);
     if (fresh) {
         // settle the newcomers around the ones already placed
-        m_layout.temperature = m_layout.spacing / 2;
-        m_layout.run(m_layout.pinned.isEmpty() ? 300 : 120);
+        // tuned on a 14-item world: wider than tall, linked items ~140 apart,
+        // loose ones just outside the cluster
+        m_layout.temperature = m_layout.pinned.isEmpty() ? m_layout.spacing : m_layout.spacing / 2;
+        m_layout.run(m_layout.pinned.isEmpty() ? 500 : 150);
         for (Id id : order)
             if (!saved.contains(id)) m_world->setNodePosition(id, m_layout.pos[id]);
     }
@@ -448,7 +450,7 @@ void GraphView::tick()
     for (auto it = m_nodes.begin(); it != m_nodes.end(); ++it) it.value()->setPos(m_layout.pos[it.key()]);
     m_rebuilding = false;
     for (auto *e : m_edges) e->adjust();
-    if (++m_rounds > 240 || moved < 0.3) {
+    if (++m_rounds > 500 || moved < 0.3) {
         m_timer.stop();
         for (auto it = m_nodes.begin(); it != m_nodes.end(); ++it) m_world->setNodePosition(it.key(), it.value()->pos());
         fitAll();

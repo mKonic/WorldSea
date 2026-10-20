@@ -7,6 +7,7 @@
 
 #include <QMainWindow>
 
+class QLabel;
 class QStackedWidget;
 class QTabWidget;
 class QMenu;
@@ -29,6 +30,9 @@ private:
     void buildMenus();
     void newWorld();
     void exportWikiDialog();
+    void startWhatIf();
+    void keepWhatIf();
+    void discardWhatIf();
     void chooseWorld();
     void closeWorld();
     void openEntity(Id id, bool focusName = false);
@@ -50,6 +54,8 @@ private:
     QStackedWidget *m_stack;
     QWidget *m_welcome;
     QWidget *m_workspace;
+    QWidget *m_whatIfBanner;
+    QLabel *m_whatIfText;
     NavPane *m_nav;
     QTabWidget *m_tabs;
     QMenu *m_recent;

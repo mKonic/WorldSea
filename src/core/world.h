@@ -154,6 +154,18 @@ public:
     QString name() const;
     void setName(const QString &name);
 
+    // --- what-ifs ---------------------------------------------------------
+    // A what-if is a copy of the world beside it to try something in. It can
+    // later replace the world it came from, or be thrown away.
+    // Makes one and returns its path (this world stays open as it is).
+    QString startWhatIf();
+    // the world this one is a what-if of, or empty
+    QString whatIfOf() const;
+    // Replaces the original with the what-if at this path, keeping the
+    // original beside it as "<name>.before-what-if.worldsea"; neither may be
+    // open. Returns the original's path, or empty with *error set.
+    static QString keepWhatIf(const QString &whatIfPath, QString *error = nullptr);
+
     // --- undo -------------------------------------------------------------
     // One user action. Nested steps fold into the outermost; the step commits
     // and becomes one undo entry when the outermost one ends.

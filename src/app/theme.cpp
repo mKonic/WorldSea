@@ -194,6 +194,7 @@ QScrollBar:horizontal { background: transparent; height: 10px; }
 QScrollBar::handle:horizontal { background: rgba(128,128,128,0.35); border-radius: 4px; min-width: 30px; margin: 2px; }
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
 #timeline { background: %7; border-bottom: 1px solid %4; }
+#whatIf { background: #3a3220; border-bottom: 1px solid #5a4a28; }
 #history { background: %7; }
 )")
         .arg(text.name(), bg.name(), bgSoft.name(), line.name(), accent.name(), muted.name(), pane.name())

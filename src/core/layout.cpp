@@ -13,6 +13,12 @@ void ForceLayout::seed(const QList<Id> &nodes)
         neighbours[a] << b;
         neighbours[b] << a;
     }
+    // loose newcomers ring the ones already placed, not the scene's origin
+    QPointF center;
+    if (!pos.isEmpty()) {
+        for (const auto &p : pos) center += p;
+        center /= double(pos.size());
+    }
     int ring = 0;
     for (Id n : nodes) {
         if (pos.contains(n)) continue;
@@ -29,7 +35,7 @@ void ForceLayout::seed(const QList<Id> &nodes)
         if (!placed) {
             const double a = ring * 2.399963; // golden angle
             const double r = spacing * (1.0 + 0.5 * std::sqrt(double(ring)));
-            at = QPointF(std::cos(a) * r, std::sin(a) * r);
+            at = center + QPointF(std::cos(a) * r, std::sin(a) * r);
             ++ring;
         }
         pos.insert(n, at);
@@ -50,6 +56,9 @@ double ForceLayout::step()
                 d = QPointF(0.5 + i % 3, 0.5 + j % 3);
                 len = std::hypot(d.x(), d.y());
             }
+            // far apart, they leave each other be: otherwise an item with no
+            // links is pushed off by everything and gravity never wins
+            if (len > 2.5 * k) continue;
             const QPointF push = d / len * (k * k / len);
             disp[nodes[i]] += push;
             disp[nodes[j]] -= push;
@@ -63,17 +72,23 @@ double ForceLayout::step()
         disp[a] -= pull;
         disp[b] += pull;
     }
+    QPointF middle;
+    for (Id n : nodes) middle += pos[n];
+    if (!nodes.isEmpty()) middle /= double(nodes.size());
+    QSet<Id> linked;
+    for (const auto &[a, b] : edges) linked << a << b;
     double moved = 0;
     for (Id n : nodes) {
         if (pinned.contains(n)) continue;
-        // a gentle pull to the middle keeps islands from drifting off
-        QPointF d = disp.value(n) - pos[n] * 0.02;
+        // a pull to the middle of them all keeps islands from drifting off;
+        // items with no links have nothing else holding them, so pull harder
+        QPointF d = disp.value(n) + (middle - pos[n]) * (linked.contains(n) ? 0.03 : 0.3);
         const double len = std::hypot(d.x(), d.y());
         if (len > temperature) d = d / len * temperature;
         pos[n] += d;
         moved = std::max(moved, std::hypot(d.x(), d.y()));
     }
-    temperature = std::max(1.0, temperature * 0.95);
+    temperature = std::max(1.0, temperature * 0.985);
     return moved;
 }
 

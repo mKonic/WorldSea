@@ -28,6 +28,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLineEdit>
 #include <QTextEdit>
@@ -90,6 +91,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_world(new World
     auto *col = new QVBoxLayout(m_workspace);
     col->setContentsMargins(0, 0, 0, 0);
     col->setSpacing(0);
+    // inside a what-if, a strip saying so, with the way out either side
+    m_whatIfBanner = new QWidget;
+    m_whatIfBanner->setObjectName("whatIf");
+    m_whatIfBanner->setAttribute(Qt::WA_StyledBackground);
+    auto *bannerRow = new QHBoxLayout(m_whatIfBanner);
+    bannerRow->setContentsMargins(14, 6, 14, 6);
+    m_whatIfText = new QLabel;
+    auto *keep = new QPushButton("Keep it");
+    keep->setObjectName("gold");
+    auto *discard = new QPushButton("Throw it away");
+    bannerRow->addWidget(m_whatIfText, 1);
+    bannerRow->addWidget(discard);
+    bannerRow->addWidget(keep);
+    connect(keep, &QPushButton::clicked, this, &MainWindow::keepWhatIf);
+    connect(discard, &QPushButton::clicked, this, &MainWindow::discardWhatIf);
+    m_whatIfBanner->hide();
+    col->addWidget(m_whatIfBanner);
     col->addWidget(new TimelineBar(m_world));
     auto *split = new QSplitter(Qt::Horizontal);
     m_nav = new NavPane(m_world);
@@ -224,6 +242,7 @@ void MainWindow::buildMenus()
     m_recent = file->addMenu("Open &recent");
     connect(m_recent, &QMenu::aboutToShow, this, &MainWindow::fillRecent);
     file->addSeparator();
+    m_worldActions << file->addAction("Start a &what-if…", this, &MainWindow::startWhatIf);
     m_worldActions << file->addAction("&Export reader wiki…", this, &MainWindow::exportWikiDialog);
     m_worldActions << file->addAction("&Close world", QKeySequence("Ctrl+Shift+W"), this, &MainWindow::closeWorld);
     file->addSeparator();
@@ -310,6 +329,11 @@ void MainWindow::updateTitle()
     setWindowTitle(open ? m_world->name() + QStringLiteral(" — WorldSea") : QStringLiteral("WorldSea"));
     m_stack->setCurrentWidget(open ? m_workspace : m_welcome);
     for (auto *a : m_worldActions) a->setEnabled(open);
+    const QString origin = open ? m_world->whatIfOf() : QString();
+    m_whatIfBanner->setVisible(!origin.isEmpty());
+    if (!origin.isEmpty())
+        m_whatIfText->setText(QStringLiteral("<b>What-if</b> of %1. Change anything; keep it to make it the world, or throw it away.")
+                                  .arg(QFileInfo(origin).completeBaseName().toHtmlEscaped()));
     if (open) {
         // the undo actions follow the world's own state
         emit m_world->undoStateChanged();
@@ -411,6 +435,53 @@ void MainWindow::exportWikiDialog()
         return;
     }
     QDesktopServices::openUrl(QUrl::fromLocalFile(QDir(opt.dir).filePath("index.html")));
+}
+
+void MainWindow::startWhatIf()
+{
+    if (QMessageBox::question(this, "Start a what-if",
+                              "Make a copy of this world to try something in? The world itself stays as it is "
+                              "until you keep the what-if.") != QMessageBox::Yes)
+        return;
+    QString path;
+    try {
+        path = m_world->startWhatIf();
+    } catch (const std::exception &e) {
+        QMessageBox::warning(this, "Start a what-if", QStringLiteral("Could not copy the world:\n%1").arg(e.what()));
+        return;
+    }
+    openWorld(path);
+}
+
+void MainWindow::keepWhatIf()
+{
+    const QString origin = m_world->whatIfOf();
+    if (QMessageBox::question(this, "Keep this what-if",
+                              QStringLiteral("Make this what-if the world “%1”? The world as it was is kept beside it "
+                                             "as “%1.before-what-if”.")
+                                  .arg(QFileInfo(origin).completeBaseName())) != QMessageBox::Yes)
+        return;
+    const QString path = m_world->path();
+    closeWorld();
+    QString error;
+    const QString kept = World::keepWhatIf(path, &error);
+    if (kept.isEmpty()) {
+        QMessageBox::warning(this, "Keep this what-if", "Nothing was replaced: " + error);
+        openWorld(path);
+        return;
+    }
+    openWorld(kept);
+}
+
+void MainWindow::discardWhatIf()
+{
+    const QString origin = m_world->whatIfOf();
+    if (QMessageBox::question(this, "Throw this what-if away", "Delete this what-if and go back to the world?") != QMessageBox::Yes)
+        return;
+    const QString path = m_world->path();
+    closeWorld();
+    for (const char *suffix : {"", "-wal", "-shm"}) QFile::remove(path + suffix);
+    if (QFileInfo::exists(origin)) openWorld(origin);
 }
 
 void MainWindow::chooseWorld()

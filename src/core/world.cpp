@@ -2,6 +2,8 @@
 
 #include "core/starter.h"
 
+#include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -241,6 +243,58 @@ void World::seedStarter()
 }
 
 QString World::name() const { return loadState("name"); }
+
+QString World::whatIfOf() const { return loadState("whatIfOf"); }
+
+QString World::startWhatIf()
+{
+    const QFileInfo fi(m_path);
+    QString path;
+    for (int n = 1;; ++n) {
+        path = fi.dir().filePath(QStringLiteral("%1 - what-if%2.worldsea").arg(fi.completeBaseName(), n > 1 ? QString(" %1").arg(n) : QString()));
+        if (!QFileInfo::exists(path)) break;
+    }
+    Stmt s(m_db, "VACUUM INTO ?1");
+    s.bind(1, path).run();
+    Db copy;
+    copy.open(path);
+    auto set = [&](const char *key, const QString &value) {
+        Stmt st(copy, "INSERT INTO state(key, value) VALUES(?1, ?2) ON CONFLICT(key) DO UPDATE SET value=?2");
+        st.bind(1, QString::fromUtf8(key)).bind(2, value).run();
+    };
+    set("whatIfOf", fi.absoluteFilePath());
+    set("whatIfOfName", name());
+    set("name", name() + " (what-if)");
+    return path;
+}
+
+QString World::keepWhatIf(const QString &whatIfPath, QString *error)
+{
+    auto fail = [&](const QString &why) {
+        if (error) *error = why;
+        return QString();
+    };
+    QString original, originalName;
+    {
+        World w;
+        w.open(whatIfPath);
+        original = w.whatIfOf();
+        originalName = w.loadState("whatIfOfName");
+        if (original.isEmpty()) return fail("this world is not a what-if");
+        w.saveState("whatIfOf", {});
+        w.saveState("whatIfOfName", {});
+        w.setName(originalName);
+    } // closing checkpoints the journal into the file
+    QString backup = QFileInfo(original).dir().filePath(QFileInfo(original).completeBaseName() + ".before-what-if.worldsea");
+    for (int n = 2; QFileInfo::exists(backup); ++n)
+        backup = QFileInfo(original).dir().filePath(QStringLiteral("%1.before-what-if %2.worldsea").arg(QFileInfo(original).completeBaseName()).arg(n));
+    if (QFileInfo::exists(original) && !QFile::rename(original, backup)) return fail("could not set " + original + " aside");
+    if (!QFile::rename(whatIfPath, original)) {
+        QFile::rename(backup, original);
+        return fail("could not move the what-if into place");
+    }
+    return original;
+}
 
 void World::setName(const QString &name) { saveState("name", name); }
 

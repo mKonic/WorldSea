@@ -1,6 +1,9 @@
+#include "core/layout.h"
 #include "core/search.h"
 #include "core/world.h"
 
+#include <QFileInfo>
+#include <QLineF>
 #include <QTemporaryDir>
 
 #include <gtest/gtest.h>
@@ -248,6 +251,31 @@ TEST_F(WorldTest, PinsMoveAndGoWithTheirItems)
     EXPECT_TRUE(w.pins(realm).isEmpty());
 }
 
+TEST_F(WorldTest, WhatIfIsACopyThatCanReplaceTheWorld)
+{
+    const Id lin = w.addEntity(character, "Lin Feng");
+    const QString original = w.path();
+    const QString copyPath = w.startWhatIf();
+    {
+        World copy;
+        copy.open(copyPath);
+        EXPECT_EQ(copy.whatIfOf(), QFileInfo(original).absoluteFilePath());
+        copy.renameEntity(lin, "Lin the Betrayer");
+    }
+    EXPECT_EQ(w.entity(lin)->name, "Lin Feng"); // the original is untouched
+    const QString name = w.name();
+    w.close();
+    QString error;
+    EXPECT_EQ(World::keepWhatIf(copyPath, &error), QFileInfo(original).absoluteFilePath()) << error.toStdString();
+    World kept;
+    kept.open(original);
+    EXPECT_EQ(kept.entity(lin)->name, "Lin the Betrayer");
+    EXPECT_TRUE(kept.whatIfOf().isEmpty());
+    EXPECT_EQ(kept.name(), name);
+    EXPECT_FALSE(QFileInfo::exists(copyPath));
+    EXPECT_TRUE(QFileInfo::exists(dir.filePath("test.before-what-if.worldsea")));
+}
+
 TEST_F(WorldTest, ReopenKeepsCursorAndMode)
 {
     w.setCursor(ch2);
@@ -259,4 +287,21 @@ TEST_F(WorldTest, ReopenKeepsCursorAndMode)
     EXPECT_EQ(again.cursor(), ch2);
     EXPECT_EQ(again.editMode(), EditMode::Correct);
     EXPECT_EQ(again.timeline().size(), 3);
+}
+
+TEST(ForceLayoutTest, LooseItemStaysNearTheRest)
+{
+    ForceLayout l;
+    QList<Id> nodes;
+    for (Id i = 1; i <= 12; ++i) {
+        nodes << i;
+        if (i > 1 && i < 12) l.edges << std::pair{i - 1, i};
+    }
+    l.seed(nodes);
+    l.run(400);
+    QPointF center;
+    for (Id i = 1; i < 12; ++i) center += l.pos[i];
+    center /= 11.0;
+    // item 12 has no links at all
+    EXPECT_LT(QLineF(center, l.pos[12]).length(), 8 * l.spacing);
 }
