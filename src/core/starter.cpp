@@ -49,6 +49,7 @@ void addTypes(World &w)
     const Id location = w.addType("Location", "#7cb870");
     const Id event = w.addType("Event", "#c97a6a");
     const Id item = w.addType("Item", "#a98ac9");
+    const Id thread = w.addType("Plot thread", "#c9c26a");
 
     plain(w, character, "Status", Kind::Text);
     plain(w, character, "Age", Kind::Number);
@@ -79,6 +80,11 @@ void addTypes(World &w)
     ref(w, item, "Owner", character, false, "Possessions");
     plain(w, item, "Grade", Kind::Text);
     plain(w, item, "Details", Kind::LongText);
+
+    plain(w, thread, "Set up in", Kind::Chapter);
+    plain(w, thread, "Paid off in", Kind::Chapter);
+    ref(w, thread, "Involves", character, true, "Threads");
+    plain(w, thread, "Details", Kind::LongText);
 }
 
 } // namespace worldsea::starter

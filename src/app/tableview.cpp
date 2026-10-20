@@ -163,6 +163,9 @@ void TableView::rebuild()
                         if (QString::number(f.steps[i].id) == eff.value) rank = i + 1;
                     cell->setText(rank ? f.steps[rank - 1].name : QString());
                     cell->key = rank;
+                } else if (f.kind == Kind::Chapter) {
+                    cell->setText(eff.has ? displayValue(*m_world, f, eff.value) : QString());
+                    cell->key = m_world->ordinal(eff.value.toLongLong());
                 } else if (f.kind == Kind::Number) {
                     cell->setText(eff.value);
                     bool ok = false;

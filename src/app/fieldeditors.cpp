@@ -307,6 +307,10 @@ QString displayValue(const World &w, const FieldDef &f, const QString &value)
         for (const auto &s : f.steps)
             if (QString::number(s.id) == value) return s.name;
         return value.isEmpty() ? QStringLiteral("—") : QStringLiteral("?");
+    case Kind::Chapter: {
+        const auto c = w.chapter(value.toLongLong());
+        return c ? c->title : QStringLiteral("—");
+    }
     case Kind::Image: return value.isEmpty() ? QStringLiteral("no image") : QStringLiteral("new image");
     case Kind::Tags: return value.split('\n', Qt::SkipEmptyParts).join(", ");
     case Kind::LongText: {

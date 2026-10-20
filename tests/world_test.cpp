@@ -37,7 +37,7 @@ struct WorldTest : ::testing::Test {
 
 TEST_F(WorldTest, StarterWorldHasTypesAndNoUndo)
 {
-    EXPECT_EQ(w.types().size(), 5);
+    EXPECT_EQ(w.types().size(), 6);
     w.undo(); // the two chapters SetUp added
     w.undo();
     EXPECT_FALSE(w.canUndo());

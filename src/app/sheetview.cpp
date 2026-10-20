@@ -377,6 +377,32 @@ QWidget *SheetView::editorFor(const FieldDef &f, Row &row)
         };
         return wrap;
     }
+    case Kind::Chapter: {
+        auto *box = new QComboBox;
+        box->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+        auto *wrap = new QWidget;
+        auto *l = new QHBoxLayout(wrap);
+        l->setContentsMargins(0, 0, 0, 0);
+        l->addWidget(box);
+        auto *go = new QPushButton("Go there");
+        go->setObjectName("flat");
+        l->addWidget(go);
+        l->addStretch();
+        connect(box, &QComboBox::activated, this, [this, box, f](int i) { setValue(f, box->itemData(i).toString()); });
+        connect(go, &QPushButton::clicked, this, [this, box] {
+            if (const Id ch = box->currentData().toString().toLongLong()) m_world->setCursor(ch);
+        });
+        row.refresh = [this, box, go, fid] {
+            QSignalBlocker b(box);
+            box->clear();
+            box->addItem("—", QString());
+            for (Id ch : m_world->timeline()) box->addItem(m_world->chapterLabel(ch), QString::number(ch));
+            const QString v = m_world->effective(m_entity, fid).value;
+            box->setCurrentIndex(std::max(0, box->findData(v)));
+            go->setVisible(!v.isEmpty());
+        };
+        return wrap;
+    }
     case Kind::Tags: {
         auto *ed = new TagsEditor;
         connect(ed, &TagsEditor::edited, this, [this, f](const QStringList &tags) { setValue(f, tags.join('\n')); });

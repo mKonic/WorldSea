@@ -28,6 +28,7 @@ struct Lane {
     Entity entity;
     int from = 0;       // first column it is in the story
     int until = -1;     // column it dies in, -1 = never
+    int to = -1;        // column its chapter fields end in (a thread's payoff), -1 = the end
     QHash<int, QStringList> changes; // column -> what changed
 };
 
@@ -101,6 +102,7 @@ protected:
             // the lane runs from its first appearance to its death or the end
             const int x0 = kNameWidth + l.from * kColWidth + kColWidth / 2;
             const int x1 = l.until >= 0 ? kNameWidth + l.until * kColWidth + kColWidth / 2
+                           : l.to >= 0  ? kNameWidth + l.to * kColWidth + kColWidth / 2
                                         : kNameWidth + int(chapters.size()) * kColWidth;
             QColor lane = laneColor;
             lane.setAlphaF(0.45);
@@ -295,7 +297,22 @@ void LanesView::rebuild()
         Lane l;
         l.entity = e;
         l.from = col(e.intro);
-        for (const auto &h : m_world->history(e.id)) {
+        // chapter fields (set up in, paid off in) make the lane a span from the
+        // first to the last; when those fields were typed in is not a change
+        QList<int> marks;
+        for (const auto &f : fields) {
+            if (f.kind != Kind::Chapter) continue;
+            const Effective v = m_world->effective(e.id, f.id, timeline.isEmpty() ? 0 : timeline.last());
+            if (!v.has || !column.contains(v.value.toLongLong())) continue;
+            const int c = column[v.value.toLongLong()];
+            marks << c;
+            l.changes[c] << f.name;
+        }
+        if (!marks.isEmpty()) {
+            l.from = *std::min_element(marks.begin(), marks.end());
+            if (marks.size() > 1) l.to = *std::max_element(marks.begin(), marks.end());
+        }
+        for (const auto &h : marks.isEmpty() ? m_world->history(e.id) : QList<HistoryEntry>{}) {
             if (!h.chapter && h.what != HistoryEntry::Intro) continue; // from the start: not a change
             const auto f = fields.value(h.field);
             QString what;

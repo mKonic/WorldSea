@@ -126,6 +126,7 @@ QString kindKey(Kind k)
     case Kind::Text: return "text";
     case Kind::LongText: return "longtext";
     case Kind::Number: return "number";
+    case Kind::Chapter: return "chapter";
     case Kind::Ladder: return "ladder";
     case Kind::Tags: return "tags";
     case Kind::Image: return "image";
@@ -147,6 +148,7 @@ QString kindLabel(Kind k)
     case Kind::Text: return "Text";
     case Kind::LongText: return "Long text";
     case Kind::Number: return "Number";
+    case Kind::Chapter: return "Chapter";
     case Kind::Ladder: return "Ladder";
     case Kind::Tags: return "Tags";
     case Kind::Image: return "Image";
@@ -157,7 +159,7 @@ QString kindLabel(Kind k)
 
 QList<Kind> allKinds()
 {
-    return {Kind::Text, Kind::LongText, Kind::Number, Kind::Ladder, Kind::Tags, Kind::Reference, Kind::Image};
+    return {Kind::Text, Kind::LongText, Kind::Number, Kind::Ladder, Kind::Tags, Kind::Chapter, Kind::Reference, Kind::Image};
 }
 
 World::World(QObject *parent) : QObject(parent) {}
@@ -534,6 +536,14 @@ void World::reassignChapter(Id from, Id to)
     empty.bindId(1, to).run();
     Stmt e(m_db, "UPDATE entity SET intro=?2 WHERE intro=?1");
     e.bind(1, from).bindId(2, to).run();
+    // chapter fields that named it now name the one before, or nothing
+    if (to) {
+        Stmt c(m_db, "UPDATE val SET value=?2 WHERE value=?1 AND field IN (SELECT id FROM field WHERE kind='chapter')");
+        c.bind(1, QString::number(from)).bind(2, QString::number(to)).run();
+    } else {
+        Stmt c(m_db, "DELETE FROM val WHERE value=?1 AND field IN (SELECT id FROM field WHERE kind='chapter')");
+        c.bind(1, QString::number(from)).run();
+    }
 }
 
 void World::deleteChapter(Id id)

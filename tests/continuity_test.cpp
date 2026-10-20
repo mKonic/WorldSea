@@ -19,6 +19,7 @@ struct ContinuityTest : ::testing::Test {
         w.open(dir.filePath("t.worldsea"));
         book = w.books().first().id;
         ch1 = w.chapters(book).first().id;
+        w.renameChapter(ch1, "Chapter 1");
         ch2 = w.addChapter(book, "Chapter 2");
         ch3 = w.addChapter(book, "Chapter 3");
         character = w.types()[0].id;
@@ -76,6 +77,20 @@ TEST_F(ContinuityTest, LinkedBeforeAppearingAndLadderGoingDown)
     w.setCursor(ch3);
     w.setValue(lin, cult.id, QString::number(cult.steps[1].id));
     EXPECT_TRUE(has("goes down from Foundation Establishment to Qi Condensation"));
+}
+
+TEST_F(ContinuityTest, PlotThreadsOpenAndBackwards)
+{
+    const Id thread = w.types()[5].id;
+    w.setCursor(ch1);
+    const Id t = w.addEntity(thread, "The jade pendant");
+    w.setValue(t, field(thread, "Set up in"), QString::number(ch2));
+    EXPECT_TRUE(has("The jade pendant is still open: Set up in Chapter 2, no Paid off in yet"));
+    w.setValue(t, field(thread, "Paid off in"), QString::number(ch1));
+    EXPECT_TRUE(has("Paid off in (Chapter 1) comes before Set up in (Chapter 2)"));
+    // deleting the payoff's chapter clears it rather than pointing nowhere
+    w.deleteChapter(ch1);
+    EXPECT_FALSE(w.effective(t, field(thread, "Paid off in"), ch2).has);
 }
 
 TEST_F(ContinuityTest, SingleValuedFieldHoldingTwo)

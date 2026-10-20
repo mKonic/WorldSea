@@ -52,6 +52,7 @@ QString kindHint(Kind k)
     case Kind::Text: return "One line of text.";
     case Kind::LongText: return "Paragraphs: descriptions, notes, backstory.";
     case Kind::Number: return "A number, like an age or a count.";
+    case Kind::Chapter: return "A chapter: where something is set up, paid off, revealed.";
     case Kind::Ladder: return "One step of an ordered list, like realms or ranks.";
     case Kind::Tags: return "Any number of short labels.";
     case Kind::Image: return "A picture: a portrait, a map, a sigil.";

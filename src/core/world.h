@@ -33,7 +33,7 @@ namespace worldsea {
 
 using Id = qint64;
 
-enum class Kind { Text, LongText, Number, Ladder, Tags, Image, Reference };
+enum class Kind { Text, LongText, Number, Ladder, Tags, Image, Reference, Chapter };
 QString kindKey(Kind k);
 Kind kindFromKey(const QString &key);
 QString kindLabel(Kind k);

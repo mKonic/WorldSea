@@ -1,7 +1,7 @@
 #pragma once
 // The types a new world starts with: Character, Organization, Location,
-// Event and Item, with sheets and paired reference fields. All of it is
-// ordinary data the writer can rename, extend or delete.
+// Event, Item and Plot thread, with sheets and paired reference fields. All
+// of it is ordinary data the writer can rename, extend or delete.
 
 namespace worldsea {
 

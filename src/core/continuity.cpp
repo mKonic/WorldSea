@@ -75,6 +75,32 @@ QList<Issue> checkContinuity(const World &w)
         }
     }
 
+    // chapter fields read in their sheet order: a setup, then its payoff
+    for (const auto &t : w.types()) {
+        QList<FieldDef> marks;
+        for (const auto &f : w.fields(t.id))
+            if (f.kind == Kind::Chapter) marks << f;
+        if (marks.size() < 2) continue;
+        for (const auto &e : entities) {
+            if (e.type != t.id) continue;
+            QList<std::pair<FieldDef, Id>> set;
+            for (const auto &f : marks) {
+                const Effective v = w.effective(e.id, f.id, w.timeline().isEmpty() ? 0 : w.timeline().last());
+                if (v.has && !v.value.isEmpty()) set.append({f, v.value.toLongLong()});
+            }
+            for (int i = 1; i < set.size(); ++i) {
+                if (w.ordinal(set[i].second) < w.ordinal(set[i - 1].second))
+                    out.append({Issue::Warning, e.id, set[i].second, set[i].first.id,
+                                QStringLiteral("%1: %2 (%3) comes before %4 (%5)")
+                                    .arg(e.name, set[i].first.name, label(set[i].second), set[i - 1].first.name, label(set[i - 1].second))});
+            }
+            if (!set.isEmpty() && set.last().first.id != marks.last().id)
+                out.append({Issue::Note, e.id, set.last().second, marks.last().id,
+                            QStringLiteral("%1 is still open: %2 %3, no %4 yet")
+                                .arg(e.name, set.last().first.name, label(set.last().second), marks.last().name)});
+        }
+    }
+
     // links: spans, appearances, deaths, single-valued fields holding two at once
     const auto links = w.allLinks(std::nullopt);
     QHash<std::pair<Id, Id>, QList<Link>> single; // (field, src) of single-valued fields
