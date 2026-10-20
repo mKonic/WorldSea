@@ -11,8 +11,16 @@
 #include "app/tableview.h"
 #include "app/timelinebar.h"
 #include "app/typeeditor.h"
+#include "core/wikiexport.h"
 
 #include <QAction>
+#include <QComboBox>
+#include <QDesktopServices>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
+#include <QListWidget>
+#include <QUrl>
 #include <QApplication>
 #include <QCloseEvent>
 #include <QDir>
@@ -214,6 +222,7 @@ void MainWindow::buildMenus()
     m_recent = file->addMenu("Open &recent");
     connect(m_recent, &QMenu::aboutToShow, this, &MainWindow::fillRecent);
     file->addSeparator();
+    m_worldActions << file->addAction("&Export reader wiki…", this, &MainWindow::exportWikiDialog);
     m_worldActions << file->addAction("&Close world", QKeySequence("Ctrl+Shift+W"), this, &MainWindow::closeWorld);
     file->addSeparator();
     file->addAction("&Quit", QKeySequence::Quit, this, &QWidget::close);
@@ -351,6 +360,54 @@ void MainWindow::newWorld()
         for (const char *suffix : {"", "-wal", "-shm"}) QFile::remove(path + suffix);
     }
     openWorld(path);
+}
+
+void MainWindow::exportWikiDialog()
+{
+    QDialog dlg(this);
+    dlg.setWindowTitle("Export reader wiki");
+    auto *form = new QFormLayout(&dlg);
+    form->setContentsMargins(22, 20, 22, 18);
+    form->setVerticalSpacing(10);
+    auto *intro = new QLabel("A web page per item, as readers know it at a chapter: nothing later gets in.");
+    intro->setObjectName("muted");
+    intro->setWordWrap(true);
+    form->addRow(intro);
+    auto *chapter = new QComboBox;
+    for (Id ch : m_world->timeline()) chapter->addItem(m_world->chapterLabel(ch), ch);
+    chapter->setCurrentIndex(std::max(0, chapter->findData(m_world->cursor())));
+    form->addRow("Readers have reached", chapter);
+    auto *types = new QListWidget;
+    types->setMaximumHeight(170);
+    for (const auto &t : m_world->types()) {
+        auto *item = new QListWidgetItem(t.name);
+        item->setData(Qt::UserRole, t.id);
+        item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable);
+        item->setCheckState(spoilerTypeByDefault(t.name) ? Qt::Unchecked : Qt::Checked);
+        types->addItem(item);
+    }
+    form->addRow("Include", types);
+    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Cancel);
+    auto *go = buttons->addButton("Export…", QDialogButtonBox::AcceptRole);
+    go->setObjectName("gold");
+    connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    form->addRow(buttons);
+    if (dlg.exec() != QDialog::Accepted) return;
+
+    WikiExport opt;
+    opt.asOf = chapter->currentData().toLongLong();
+    for (int i = 0; i < types->count(); ++i)
+        if (types->item(i)->checkState() == Qt::Checked) opt.types.insert(types->item(i)->data(Qt::UserRole).toLongLong());
+    const QString base = QFileDialog::getExistingDirectory(this, "Export into", QFileInfo(m_world->path()).absolutePath());
+    if (base.isEmpty()) return;
+    opt.dir = QDir(base).filePath(m_world->name() + " wiki");
+    QString error;
+    if (exportWiki(*m_world, opt, &error) < 0) {
+        QMessageBox::warning(this, "Export reader wiki", "The export stopped: " + error);
+        return;
+    }
+    QDesktopServices::openUrl(QUrl::fromLocalFile(QDir(opt.dir).filePath("index.html")));
 }
 
 void MainWindow::chooseWorld()

@@ -30,6 +30,7 @@ public:
 
 signals:
     void resized();
+    void zoomed();
 
 protected:
     void wheelEvent(QWheelEvent *e) override;
@@ -55,6 +56,7 @@ private:
     void rebuild();
     void arrange();
     void tick();
+    void rescaleText();
     void selectionChanged();
     void nodeMoved(GraphNode *n);
     void nodeReleased(GraphNode *n);

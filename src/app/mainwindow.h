@@ -28,6 +28,7 @@ protected:
 private:
     void buildMenus();
     void newWorld();
+    void exportWikiDialog();
     void chooseWorld();
     void closeWorld();
     void openEntity(Id id, bool focusName = false);

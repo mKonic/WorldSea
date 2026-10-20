@@ -104,6 +104,7 @@ QString Theme::styleSheet(const QString &iconDir) const
 {
     return QStringLiteral(R"(
 QWidget { color: %1; }
+QDialogButtonBox { dialogbuttonbox-buttons-have-icons: 0; }
 QMainWindow, #room, QDialog { background: %2; }
 QToolTip { background: %3; color: %1; border: 1px solid %4; padding: 4px 6px; }
 QLabel#title { color: %5; font-size: 16px; }

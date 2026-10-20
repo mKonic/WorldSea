@@ -21,6 +21,9 @@ namespace worldsea {
 
 namespace {
 constexpr double kRadius = 11;
+// labels grow in the scene as the view zooms out, so they keep a readable
+// size on screen
+double g_textScale = 1;
 }
 
 class GraphNode : public QGraphicsItem {
@@ -35,6 +38,11 @@ public:
         m_stub = e.stub;
     }
     Id id() const { return m_id; }
+    void rescaled()
+    {
+        prepareGeometryChange();
+        update();
+    }
     void setFaded(bool f)
     {
         m_faded = f;
@@ -93,7 +101,7 @@ private:
     static QFont font()
     {
         QFont f;
-        f.setPixelSize(15);
+        f.setPixelSize(int(13 * g_textScale));
         return f;
     }
     GraphView *m_view;
@@ -136,7 +144,8 @@ public:
 
     QRectF boundingRect() const override
     {
-        return QRectF(m_line.p1(), m_line.p2()).normalized().adjusted(-80, -20, 80, 20);
+        return QRectF(m_line.p1(), m_line.p2()).normalized().adjusted(-80 * g_textScale, -20 * g_textScale, 80 * g_textScale,
+                                                                       20 * g_textScale);
     }
     QPainterPath shape() const override
     {
@@ -171,7 +180,7 @@ public:
         }
         if (showLabel || m_hot) {
             QFont f;
-            f.setPixelSize(12);
+            f.setPixelSize(int(11 * g_textScale));
             p->setFont(f);
             p->setPen(m_hot ? theme().text : theme().muted);
             const QString text = label(false);
@@ -197,6 +206,7 @@ void GraphCanvas::wheelEvent(QWheelEvent *e)
     if ((now < 0.15 && f < 1) || (now > 4 && f > 1)) return;
     touched = true;
     scale(f, f);
+    emit zoomed();
 }
 
 void GraphCanvas::resizeEvent(QResizeEvent *e)
@@ -282,6 +292,7 @@ GraphView::GraphView(World *world, QWidget *parent) : QWidget(parent), m_world(w
         m_view->touched = false;
         fitAll();
     });
+    connect(m_view, &GraphCanvas::zoomed, this, &GraphView::rescaleText);
     connect(m_view, &GraphCanvas::resized, this, [this] {
         if (!m_view->touched) fitAll();
     });
@@ -290,6 +301,16 @@ GraphView::GraphView(World *world, QWidget *parent) : QWidget(parent), m_world(w
     connect(world, &World::changed, this, &GraphView::rebuild);
     connect(world, &World::cursorChanged, this, &GraphView::rebuild);
     rebuild();
+}
+
+void GraphView::rescaleText()
+{
+    const double zoom = m_view->transform().m11();
+    const double s = std::clamp(zoom < 1 ? 1 / zoom : 1.0, 1.0, 4.0);
+    if (std::abs(s - g_textScale) < 0.01) return;
+    g_textScale = s;
+    for (auto *n : m_nodes) n->rescaled();
+    for (auto *e : m_edges) e->adjust();
 }
 
 void GraphView::showEvent(QShowEvent *e)
@@ -304,13 +325,17 @@ void GraphView::showEvent(QShowEvent *e)
 
 void GraphView::fitAll()
 {
-    const QRectF r = m_scene->itemsBoundingRect().adjusted(-60, -60, 60, 60);
-    if (r.isEmpty()) return;
+    // by where the items are, not by their labels, which grow as it zooms out
+    QRectF r;
+    for (auto *n : m_nodes) r |= QRectF(n->pos(), QSizeF(1, 1));
+    if (m_nodes.isEmpty()) return;
+    r.adjust(-120, -70, 120, 90);
     m_view->fitInView(r, Qt::KeepAspectRatio);
     if (m_view->transform().m11() > 1.4) {
         m_view->resetTransform();
         m_view->centerOn(r.center());
     }
+    rescaleText();
 }
 
 void GraphView::rebuild()

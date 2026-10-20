@@ -98,8 +98,4 @@ private:
     QStringListModel *m_names;
 };
 
-
-// how a value reads in the history and the graph
-QString displayValue(const World &w, const FieldDef &f, const QString &value);
-
 } // namespace worldsea

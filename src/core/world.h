@@ -334,4 +334,8 @@ private:
     mutable bool m_timelineValid = false;
 };
 
+// how a value reads in a history, a table or an export: a ladder's step
+// name, a chapter's title, long text cut short
+QString displayValue(const World &w, const FieldDef &f, const QString &value);
+
 } // namespace worldsea

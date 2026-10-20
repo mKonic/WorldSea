@@ -1159,6 +1159,27 @@ QByteArray World::blob(Id id) const
     return s.step() ? s.blob(0) : QByteArray();
 }
 
+QString displayValue(const World &w, const FieldDef &f, const QString &value)
+{
+    switch (f.kind) {
+    case Kind::Ladder:
+        for (const auto &s : f.steps)
+            if (QString::number(s.id) == value) return s.name;
+        return value.isEmpty() ? QStringLiteral("—") : QStringLiteral("?");
+    case Kind::Chapter: {
+        const auto c = w.chapter(value.toLongLong());
+        return c ? c->title : QStringLiteral("—");
+    }
+    case Kind::Image: return value.isEmpty() ? QStringLiteral("no image") : QStringLiteral("new image");
+    case Kind::Tags: return value.split('\n', Qt::SkipEmptyParts).join(", ");
+    case Kind::LongText: {
+        QString t = value.simplified();
+        return t.size() > 60 ? t.left(57) + "…" : t;
+    }
+    default: return value.isEmpty() ? QStringLiteral("—") : value;
+    }
+}
+
 // --- graph positions -------------------------------------------------------
 
 QHash<Id, QPointF> World::nodePositions() const
