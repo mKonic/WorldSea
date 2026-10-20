@@ -49,7 +49,9 @@ NavPane::NavPane(World *world, QWidget *parent) : QWidget(parent), m_world(world
     m_filter->setClearButtonEnabled(true);
     auto *add = new QToolButton;
     add->setText("+");
-    add->setToolTip("New…");
+    add->setObjectName("square");
+    add->setFixedSize(32, 32);
+    add->setToolTip("New item, type, book or chapter");
     add->setPopupMode(QToolButton::InstantPopup);
     auto *addMenu = new QMenu(add);
     connect(addMenu, &QMenu::aboutToShow, this, [this, addMenu] {
@@ -72,6 +74,7 @@ NavPane::NavPane(World *world, QWidget *parent) : QWidget(parent), m_world(world
     m_tree->setContextMenuPolicy(Qt::CustomContextMenu);
     m_tree->setEditTriggers(QAbstractItemView::EditKeyPressed);
     m_tree->setExpandsOnDoubleClick(false);
+    dropFocusFrame(m_tree);
     col->addWidget(m_tree, 1);
 
     connect(m_filter, &QLineEdit::textChanged, this, &NavPane::rebuild);

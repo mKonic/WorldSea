@@ -182,6 +182,7 @@ SheetView::SheetView(World *world, Id entity, QWidget *parent) : QWidget(parent)
     connect(m_historyField, &QComboBox::activated, this, &SheetView::refreshHistory);
     m_history = new QListWidget;
     m_history->setWordWrap(true);
+    dropFocusFrame(m_history);
     m_history->setContextMenuPolicy(Qt::CustomContextMenu);
     m_history->setToolTip("Double-click to view the world as of that chapter");
     connect(m_history, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem *i) {

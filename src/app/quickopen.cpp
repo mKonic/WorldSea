@@ -27,6 +27,7 @@ QuickOpen::QuickOpen(World *world, QWidget *parent) : QDialog(parent, Qt::Popup 
     m_input->setPlaceholderText("Find an item, go to a chapter, or create something");
     m_list = new QListWidget;
     m_list->setMinimumHeight(320);
+    dropFocusFrame(m_list);
     col->addWidget(m_input);
     col->addWidget(m_list);
     m_input->installEventFilter(this);

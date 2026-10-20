@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     pal.setColor(QPalette::ToolTipBase, t.bgSoft);
     pal.setColor(QPalette::ToolTipText, t.text);
     app.setPalette(pal);
-    app.setStyleSheet(t.styleSheet());
+    app.setStyleSheet(t.styleSheet(t.writeIcons()));
     QFont ui = app.font();
     ui.setPixelSize(13);
     app.setFont(ui);

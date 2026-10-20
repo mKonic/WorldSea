@@ -8,7 +8,6 @@
 #include <QWidget>
 
 class QLabel;
-class QPushButton;
 class QSlider;
 class QToolButton;
 
@@ -25,7 +24,7 @@ private:
     QToolButton *m_prev, *m_next;
     QSlider *m_slider;
     QLabel *m_label;
-    QPushButton *m_correct, *m_change;
+    QToolButton *m_correct, *m_change;
 };
 
 } // namespace worldsea

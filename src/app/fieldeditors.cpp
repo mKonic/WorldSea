@@ -114,8 +114,9 @@ TagsEditor::TagsEditor(QWidget *parent) : QWidget(parent)
     m_flow = new FlowLayout(this, 6, 6);
     m_flow->setContentsMargins(0, 0, 0, 0);
     m_input = new QLineEdit;
-    m_input->setPlaceholderText("Add a tag");
-    m_input->setFixedWidth(140);
+    m_input->setPlaceholderText("+ tag");
+    m_input->setObjectName("ghost");
+    m_input->setFixedWidth(120);
     m_flow->addWidget(m_input);
     connect(m_input, &QLineEdit::returnPressed, this, [this] {
         const QString t = m_input->text().trimmed();
@@ -160,8 +161,8 @@ RefEditor::RefEditor(World *world, Id entity, const FieldDef &field, QWidget *pa
     m_flow = new FlowLayout(this, 6, 6);
     m_flow->setContentsMargins(0, 0, 0, 0);
     m_input = new QLineEdit;
-    m_input->setPlaceholderText(field.multi ? "Type a name to link" : "Type a name");
-    m_input->setFixedWidth(180);
+    m_input->setObjectName("ghost");
+    m_input->setFixedWidth(170);
     m_names = new QStringListModel(this);
     auto *completer = new QCompleter(m_names, this);
     completer->setCaseSensitivity(Qt::CaseInsensitive);
@@ -217,14 +218,8 @@ void RefEditor::refresh()
         connect(chip, &Chip::menuRequested, this, [this, v](const QPoint &p) { chipMenu(v, p); });
         m_flow->insertWidget(i++, chip);
     }
-    m_input->setVisible(m_field.multi || links.isEmpty());
-    if (!m_field.multi && !links.isEmpty()) {
-        // a single-valued field still offers to replace its link
-        m_input->setVisible(true);
-        m_input->setPlaceholderText("Replace");
-    } else {
-        m_input->setPlaceholderText(m_field.multi ? "Type a name to link" : "Type a name");
-    }
+    // a single-valued field still offers to replace its link
+    m_input->setPlaceholderText(links.isEmpty() ? QStringLiteral("+ link") : m_field.multi ? QStringLiteral("+ another") : QStringLiteral("change…"));
 
     QStringList names;
     const QList<Id> types = targetTypes();

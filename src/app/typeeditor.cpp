@@ -94,7 +94,7 @@ TypeEditor::TypeEditor(World *world, Id type, QWidget *parent) : QWidget(parent)
     m_fields->setMinimumWidth(240);
     m_fields->setMaximumWidth(320);
     m_fields->setItemDelegate(new FieldRowDelegate(m_fields));
-    auto *add = new QPushButton("Add field");
+    auto *add = new QPushButton("Add field  ▾");
     auto *addMenu = new QMenu(add);
     for (Kind k : allKinds()) {
         addMenu->addAction(kindLabel(k), this, [this, k] {
