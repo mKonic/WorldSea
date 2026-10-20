@@ -34,6 +34,7 @@ private:
     void openType(Id id);
     void openTable(Id id);
     void openGraph();
+    void openChecks();
     void quickOpen();
     void newItemHere();
     void updateTitle();

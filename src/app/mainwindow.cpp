@@ -1,5 +1,6 @@
 #include "app/mainwindow.h"
 
+#include "app/checksview.h"
 #include "app/graphview.h"
 #include "app/navpane.h"
 #include "app/quickopen.h"
@@ -255,6 +256,7 @@ void MainWindow::buildMenus()
         if (!type && !m_world->types().isEmpty()) type = m_world->types().first().id;
         if (type) openTable(type);
     });
+    m_worldActions << go->addAction("&Continuity checks", QKeySequence("Ctrl+Shift+C"), this, &MainWindow::openChecks);
     m_worldActions << go->addAction("&Filter items", QKeySequence::Find, this, [this] { m_nav->focusFilter(); });
     go->addSeparator();
     m_worldActions << go->addAction("Close &tab", QKeySequence("Ctrl+W"), this, [this] {
@@ -414,6 +416,24 @@ void MainWindow::openTable(Id id)
         table->deleteLater();
     });
     m_tabs->setCurrentIndex(m_tabs->addTab(table, t->name + " table"));
+}
+
+void MainWindow::openChecks()
+{
+    for (int i = 0; i < m_tabs->count(); ++i) {
+        if (qobject_cast<ChecksView *>(m_tabs->widget(i))) {
+            m_tabs->setCurrentIndex(i);
+            return;
+        }
+    }
+    auto *c = new ChecksView(m_world);
+    connect(c, &ChecksView::openEntity, this, [this](Id id) { openEntity(id); });
+    const int index = m_tabs->addTab(c, "Checks");
+    connect(c, &ChecksView::titleChanged, this, [this, c](const QString &t) {
+        if (const int i = m_tabs->indexOf(c); i >= 0) m_tabs->setTabText(i, t);
+    });
+    c->rebuild();
+    m_tabs->setCurrentIndex(index);
 }
 
 void MainWindow::openGraph()
