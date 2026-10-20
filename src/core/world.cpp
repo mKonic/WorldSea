@@ -15,11 +15,11 @@ namespace worldsea {
 
 namespace {
 
-constexpr int kSchemaVersion = 1;
+constexpr int kSchemaVersion = 2; // 2: pins
 
 // rows these tables hold are the world; everything else (the cursor, graph
 // positions) is how it is being looked at, and stays out of undo
-constexpr const char *kTracked[] = {"book", "chapter", "etype", "field", "entity", "val", "link", "blob"};
+constexpr const char *kTracked[] = {"book", "chapter", "etype", "field", "entity", "val", "link", "blob", "pin"};
 
 const char *kSchema = R"(
 CREATE TABLE IF NOT EXISTS state(key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -62,6 +62,12 @@ CREATE TABLE IF NOT EXISTS link(
 CREATE INDEX IF NOT EXISTS link_src ON link(src);
 CREATE INDEX IF NOT EXISTS link_dst ON link(dst);
 CREATE TABLE IF NOT EXISTS blob(id INTEGER PRIMARY KEY, data BLOB NOT NULL);
+CREATE TABLE IF NOT EXISTS pin(
+    id INTEGER PRIMARY KEY,
+    map INTEGER NOT NULL REFERENCES entity(id) ON DELETE CASCADE,
+    entity INTEGER NOT NULL REFERENCES entity(id) ON DELETE CASCADE,
+    x REAL NOT NULL, y REAL NOT NULL,
+    UNIQUE(map, entity));
 CREATE TABLE IF NOT EXISTS node_pos(
     entity INTEGER PRIMARY KEY REFERENCES entity(id) ON DELETE CASCADE, x REAL NOT NULL, y REAL NOT NULL);
 )";
@@ -1178,6 +1184,31 @@ QString displayValue(const World &w, const FieldDef &f, const QString &value)
     }
     default: return value.isEmpty() ? QStringLiteral("—") : value;
     }
+}
+
+// --- map pins ----------------------------------------------------------------
+
+QList<Pin> World::pins(Id map) const
+{
+    QList<Pin> out;
+    Stmt s(m_db, "SELECT entity, x, y FROM pin WHERE map=?1 ORDER BY id");
+    s.bind(1, map);
+    while (s.step()) out.append({s.i64(0), QPointF(s.num(1), s.num(2))});
+    return out;
+}
+
+void World::setPin(Id map, Id entity, QPointF at)
+{
+    Step step(*this, "Pin");
+    Stmt s(m_db, "INSERT INTO pin(map, entity, x, y) VALUES(?1, ?2, ?3, ?4) ON CONFLICT(map, entity) DO UPDATE SET x=?3, y=?4");
+    s.bind(1, map).bind(2, entity).bind(3, at.x()).bind(4, at.y()).run();
+}
+
+void World::removePin(Id map, Id entity)
+{
+    Step step(*this, "Unpin");
+    Stmt s(m_db, "DELETE FROM pin WHERE map=?1 AND entity=?2");
+    s.bind(1, map).bind(2, entity).run();
 }
 
 // --- graph positions -------------------------------------------------------

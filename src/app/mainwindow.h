@@ -39,6 +39,7 @@ private:
     void openHierarchy();
     void openLanes();
     void openMatrix();
+    void openMap();
     void quickOpen();
     void newItemHere();
     void updateTitle();

@@ -233,6 +233,21 @@ TEST_F(WorldTest, UndoSurvivesReopening)
     EXPECT_EQ(again.entity(lin)->name, "Lin Feng");
 }
 
+TEST_F(WorldTest, PinsMoveAndGoWithTheirItems)
+{
+    const Id location = w.types()[2].id;
+    const Id realm = w.addEntity(location, "Azure Realm");
+    const Id peak = w.addEntity(location, "Azure Peak");
+    w.setPin(realm, peak, {10, 20});
+    w.setPin(realm, peak, {30, 40});
+    ASSERT_EQ(w.pins(realm).size(), 1);
+    EXPECT_EQ(w.pins(realm).first().at, QPointF(30, 40));
+    w.undo();
+    EXPECT_EQ(w.pins(realm).first().at, QPointF(10, 20));
+    w.deleteEntity(peak);
+    EXPECT_TRUE(w.pins(realm).isEmpty());
+}
+
 TEST_F(WorldTest, ReopenKeepsCursorAndMode)
 {
     w.setCursor(ch2);

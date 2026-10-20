@@ -133,6 +133,7 @@ NavPane::NavPane(World *world, QWidget *parent) : QWidget(parent), m_world(world
         case HierarchyNode: emit openHierarchy(); break;
         case LanesNode: emit openLanes(); break;
         case MatrixNode: emit openMatrix(); break;
+        case MapNode: emit openMap(); break;
         }
     });
     connect(m_tree, &QTreeWidget::itemChanged, this, [this](QTreeWidgetItem *i) { renamed(i); });
@@ -232,6 +233,7 @@ void NavPane::rebuild()
         auto *views = header("VIEWS", ViewsHeader);
         for (auto [text, kind, tip] : {std::tuple{"Graph", GraphNode, "Every item and link as of this chapter (Ctrl+G)"},
                                        std::tuple{"Timeline", LanesNode, "Characters in lanes across the chapters (Ctrl+L)"},
+                                       std::tuple{"Map", MapNode, "Places pinned on an image, and who is there now (Ctrl+Shift+P)"},
                                        std::tuple{"Who knows what", MatrixNode, "A link field as a grid: secrets by who knows them (Ctrl+Shift+M)"},
                                        std::tuple{"Hierarchy", HierarchyNode, "Items nested by a link field (Ctrl+Shift+H)"},
                                        std::tuple{"Continuity checks", ChecksNode, "What contradicts itself (Ctrl+Shift+C)"}}) {
@@ -373,6 +375,7 @@ void NavPane::activated(QTreeWidgetItem *item)
     case HierarchyNode: emit openHierarchy(); break;
     case LanesNode: emit openLanes(); break;
     case MatrixNode: emit openMatrix(); break;
+    case MapNode: emit openMap(); break;
     default: item->setExpanded(!item->isExpanded());
     }
 }
@@ -424,6 +427,7 @@ void NavPane::contextMenu(const QPoint &p)
     case HierarchyNode:
     case LanesNode:
     case MatrixNode:
+    case MapNode:
         return;
     case BooksHeader:
         menu.addAction("New book", this, &NavPane::newBook);

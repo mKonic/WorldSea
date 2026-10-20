@@ -124,6 +124,12 @@ struct Effective {
     Id nextChange = 0; // the first later chapter that changes it, 0 = none
 };
 
+// an item placed on another item's image (a map), in image pixels
+struct Pin {
+    Id entity = 0;
+    QPointF at;
+};
+
 // one entry in an item's history
 struct HistoryEntry {
     enum What { Value, LinkStart, LinkEnd, Intro } what = Value;
@@ -280,6 +286,11 @@ public:
     // --- images -------------------------------------------------------------
     Id addBlob(const QByteArray &data);
     QByteArray blob(Id id) const;
+
+    // --- map pins --------------------------------------------------------
+    QList<Pin> pins(Id map) const;
+    void setPin(Id map, Id entity, QPointF at);
+    void removePin(Id map, Id entity);
 
     // --- graph positions (not part of undo) --------------------------------
     QHash<Id, QPointF> nodePositions() const;

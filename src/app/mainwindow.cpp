@@ -4,6 +4,7 @@
 #include "app/graphview.h"
 #include "app/hierarchyview.h"
 #include "app/lanesview.h"
+#include "app/mapview.h"
 #include "app/matrixview.h"
 #include "app/navpane.h"
 #include "app/quickopen.h"
@@ -116,6 +117,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_world(new World
     connect(m_nav, &NavPane::openHierarchy, this, &MainWindow::openHierarchy);
     connect(m_nav, &NavPane::openLanes, this, &MainWindow::openLanes);
     connect(m_nav, &NavPane::openMatrix, this, &MainWindow::openMatrix);
+    connect(m_nav, &NavPane::openMap, this, &MainWindow::openMap);
     connect(m_world, &World::changed, this, &MainWindow::updateTitle);
 
     buildMenus();
@@ -275,6 +277,7 @@ void MainWindow::buildMenus()
     });
     m_worldActions << go->addAction("Time&line", QKeySequence("Ctrl+L"), this, &MainWindow::openLanes);
     m_worldActions << go->addAction("&Who knows what", QKeySequence("Ctrl+Shift+M"), this, &MainWindow::openMatrix);
+    m_worldActions << go->addAction("Ma&p", QKeySequence("Ctrl+Shift+P"), this, &MainWindow::openMap);
     m_worldActions << go->addAction("&Hierarchy", QKeySequence("Ctrl+Shift+H"), this, &MainWindow::openHierarchy);
     m_worldActions << go->addAction("&Continuity checks", QKeySequence("Ctrl+Shift+C"), this, &MainWindow::openChecks);
     m_worldActions << go->addAction("&Filter items", QKeySequence::Find, this, [this] { m_nav->focusFilter(); });
@@ -541,6 +544,19 @@ void MainWindow::openMatrix()
     auto *m = new MatrixView(m_world);
     connect(m, &MatrixView::openEntity, this, [this](Id id) { openEntity(id); });
     m_tabs->setCurrentIndex(m_tabs->addTab(m, "Who knows what"));
+}
+
+void MainWindow::openMap()
+{
+    for (int i = 0; i < m_tabs->count(); ++i) {
+        if (qobject_cast<MapView *>(m_tabs->widget(i))) {
+            m_tabs->setCurrentIndex(i);
+            return;
+        }
+    }
+    auto *m = new MapView(m_world);
+    connect(m, &MapView::openEntity, this, [this](Id id) { openEntity(id); });
+    m_tabs->setCurrentIndex(m_tabs->addTab(m, "Map"));
 }
 
 void MainWindow::openGraph()

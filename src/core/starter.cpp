@@ -72,6 +72,7 @@ void addTypes(World &w)
     plain(w, org, "Details", Kind::LongText);
 
     ref(w, location, "Part of", location, false, "Places within");
+    plain(w, location, "Map", Kind::Image);
     plain(w, location, "Details", Kind::LongText);
 
     ref(w, event, "Participants", character, true, "Events");
