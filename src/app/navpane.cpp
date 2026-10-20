@@ -131,6 +131,7 @@ NavPane::NavPane(World *world, QWidget *parent) : QWidget(parent), m_world(world
         case GraphNode: emit openGraph(); break;
         case ChecksNode: emit openChecks(); break;
         case HierarchyNode: emit openHierarchy(); break;
+        case LanesNode: emit openLanes(); break;
         }
     });
     connect(m_tree, &QTreeWidget::itemChanged, this, [this](QTreeWidgetItem *i) { renamed(i); });
@@ -229,6 +230,7 @@ void NavPane::rebuild()
     if (filter.isEmpty()) {
         auto *views = header("VIEWS", ViewsHeader);
         for (auto [text, kind, tip] : {std::tuple{"Graph", GraphNode, "Every item and link as of this chapter (Ctrl+G)"},
+                                       std::tuple{"Timeline", LanesNode, "Characters in lanes across the chapters (Ctrl+L)"},
                                        std::tuple{"Hierarchy", HierarchyNode, "Items nested by a link field (Ctrl+Shift+H)"},
                                        std::tuple{"Continuity checks", ChecksNode, "What contradicts itself (Ctrl+Shift+C)"}}) {
             auto *v = new QTreeWidgetItem(views, {text});
@@ -367,6 +369,7 @@ void NavPane::activated(QTreeWidgetItem *item)
     case GraphNode: emit openGraph(); break;
     case ChecksNode: emit openChecks(); break;
     case HierarchyNode: emit openHierarchy(); break;
+    case LanesNode: emit openLanes(); break;
     default: item->setExpanded(!item->isExpanded());
     }
 }
@@ -416,6 +419,7 @@ void NavPane::contextMenu(const QPoint &p)
     case GraphNode:
     case ChecksNode:
     case HierarchyNode:
+    case LanesNode:
         return;
     case BooksHeader:
         menu.addAction("New book", this, &NavPane::newBook);

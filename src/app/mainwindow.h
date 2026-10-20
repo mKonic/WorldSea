@@ -36,6 +36,7 @@ private:
     void openGraph();
     void openChecks();
     void openHierarchy();
+    void openLanes();
     void quickOpen();
     void newItemHere();
     void updateTitle();
